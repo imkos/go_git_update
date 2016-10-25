@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -13,9 +14,14 @@ import (
 	"sync"
 )
 
+const (
+	Major_Ver = "1.1"
+)
+
 var (
-	wg   *sync.WaitGroup
-	b_mt *bool
+	wg              *sync.WaitGroup
+	b_mt            *bool
+	s_home_rootpath *string
 )
 
 //判断文件或文件夹是否存在
@@ -32,7 +38,9 @@ func execCommand(commandName string, params []string, Dir_env string) bool {
 	cmd.Dir = Dir_env
 	//显示运行的命令
 	//fmt.Println(cmd.Args)
-	fmt.Println("Dir:", Dir_env)
+	if !*b_mt {
+		fmt.Println("Dir:", Dir_env)
+	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println(err)
@@ -40,14 +48,19 @@ func execCommand(commandName string, params []string, Dir_env string) bool {
 	}
 	cmd.Start()
 	reader := bufio.NewReader(stdout)
+	var out_buff bytes.Buffer
 	//实时循环读取输出流中的一行内容
 	for {
 		line, err2 := reader.ReadString('\n')
 		if err2 != nil || io.EOF == err2 {
 			break
 		}
-		fmt.Println(line)
+		out_buff.WriteString(line)
 	}
+	if *b_mt {
+		fmt.Println("Dir:", Dir_env)
+	}
+	fmt.Println(out_buff.String())
 	cmd.Wait()
 	return true
 }
@@ -78,20 +91,25 @@ func git_Update_byDir(s_rootPath string) {
 }
 
 func Init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s, Version: %s\n", os.Args[0], Major_Ver)
+		fmt.Println("git batch update(pull)! by K.o.s[vbz276@gmail.com]!")
+	}
 	b_mt = flag.Bool("mt", false, "enable Multithreading")
+	//home_rootpath := `F:\GoPortWin\go\src`
+	s_home_rootpath = flag.String("dir", filepath.Dir(os.Args[0]), "Set Home RootPath")
 }
 
 func main() {
 	Init()
 	flag.Parse()
-	//home_rootpath := `F:\GoPortWin\go\src`
-	home_rootpath := filepath.Dir(os.Args[0])
+	//
 	if *b_mt {
 		wg = new(sync.WaitGroup)
-		git_Update_byDir(home_rootpath)
+		git_Update_byDir(*s_home_rootpath)
 		wg.Wait()
 	} else {
-		git_Update_byDir(home_rootpath)
+		git_Update_byDir(*s_home_rootpath)
 	}
 
 }
