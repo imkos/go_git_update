@@ -94,6 +94,7 @@ func Init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s, Version: %s\n", os.Args[0], Major_Ver)
 		fmt.Println("git batch update(pull)! by K.o.s[vbz276@gmail.com]!")
+		flag.PrintDefaults()
 	}
 	b_mt = flag.Bool("mt", false, "enable Multithreading")
 	//home_rootpath := `F:\GoPortWin\go\src`
