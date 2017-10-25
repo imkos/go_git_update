@@ -15,13 +15,16 @@ import (
 )
 
 const (
-	Major_Ver = "1.1"
+	Major_Ver               = "1.2"
+	DEFAULT_MAX_CHILD_TASKS = 20
+	s_PathSeparator         = string(os.PathSeparator)
 )
 
 var (
-	wg              *sync.WaitGroup
-	b_mt            *bool
-	s_home_rootpath *string
+	wg                *sync.WaitGroup
+	b_mt              *bool
+	s_home_rootpath   *string
+	i_max_child_tasks *uint
 )
 
 //判断文件或文件夹是否存在
@@ -65,24 +68,31 @@ func execCommand(commandName string, params []string, Dir_env string) bool {
 	return true
 }
 
-func git_Update_byDir(s_rootPath string) {
+func git_Update_byDir(s_rootPath string, ch chan struct{}) {
 	folderList, err := ioutil.ReadDir(s_rootPath)
 	if err != nil {
 		fmt.Println("ioutil.ReadDir fail!")
 	}
-	s_PathSeparator := string(os.PathSeparator)
+	git_pull := func(spath string) {
+		execCommand("git", []string{"pull"}, spath)
+		if *b_mt {
+			<-ch
+		}
+	}
 	for _, vFile := range folderList {
 		if vFile.IsDir() {
 			s_gitFolder := s_rootPath + s_PathSeparator + vFile.Name() + s_PathSeparator + ".git"
 			if Exist(s_gitFolder) {
 				if *b_mt {
 					wg.Add(1)
-					go execCommand("git", []string{"pull"}, s_rootPath+s_PathSeparator+vFile.Name())
+					//在此处阻塞比在git_pull中阻塞要好一些
+					ch <- struct{}{}
+					go git_pull(s_rootPath + s_PathSeparator + vFile.Name())
 				} else {
-					execCommand("git", []string{"pull"}, s_rootPath+s_PathSeparator+vFile.Name())
+					git_pull(s_rootPath + s_PathSeparator + vFile.Name())
 				}
 			} else {
-				git_Update_byDir(s_rootPath + s_PathSeparator + vFile.Name())
+				git_Update_byDir(s_rootPath+s_PathSeparator+vFile.Name(), ch)
 			}
 		} else {
 			continue
@@ -97,6 +107,7 @@ func Init() {
 		flag.PrintDefaults()
 	}
 	b_mt = flag.Bool("mt", false, "enable Multithreading")
+	i_max_child_tasks = flag.Uint("ctasks", DEFAULT_MAX_CHILD_TASKS, "max Child tasks 1~30")
 	//home_rootpath := `F:\GoPortWin\go\src`
 	s_home_rootpath = flag.String("dir", filepath.Dir(os.Args[0]), "Set Home RootPath")
 }
@@ -104,13 +115,18 @@ func Init() {
 func main() {
 	Init()
 	flag.Parse()
+	//cap: 1~30
+	if *i_max_child_tasks == 0 || *i_max_child_tasks > DEFAULT_MAX_CHILD_TASKS {
+		*i_max_child_tasks = DEFAULT_MAX_CHILD_TASKS
+	}
+	ch_max_exec := make(chan struct{}, *i_max_child_tasks)
 	//
 	if *b_mt {
 		wg = new(sync.WaitGroup)
-		git_Update_byDir(*s_home_rootpath)
+		git_Update_byDir(*s_home_rootpath, ch_max_exec)
 		wg.Wait()
 	} else {
-		git_Update_byDir(*s_home_rootpath)
+		git_Update_byDir(*s_home_rootpath, ch_max_exec)
 	}
 
 }
