@@ -107,7 +107,7 @@ func Init() {
 		flag.PrintDefaults()
 	}
 	b_mt = flag.Bool("mt", false, "enable Multithreading")
-	i_max_child_tasks = flag.Uint("ctasks", DEFAULT_MAX_CHILD_TASKS, "max Child tasks 1~30")
+	i_max_child_tasks = flag.Uint("ctasks", DEFAULT_MAX_CHILD_TASKS, "max Child tasks 1~20")
 	//home_rootpath := `F:\GoPortWin\go\src`
 	s_home_rootpath = flag.String("dir", filepath.Dir(os.Args[0]), "Set Home RootPath")
 }
