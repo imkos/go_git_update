@@ -1,0 +1,35 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "taskName": "go build",
+            "type": "shell",
+            "command": "go build -i .",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "taskName": "go test",
+            "type": "shell",
+            "command": "go test -v .",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "go vet",
+            "type": "shell",
+            "command": "go vet -v .",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "go generate",
+            "type": "shell",
+            "command": "go generate",
+            "problemMatcher": []
+        }
+    ]
+}
