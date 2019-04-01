@@ -183,6 +183,67 @@ func git_Update_byDir2(root string) {
 	}
 }
 
+func dirsWalk(s_rootPath string, ch chan string) error {
+	folderList, err := ioutil.ReadDir(s_rootPath)
+	if err != nil {
+		fmt.Println("dirsWalk.ioutil.ReadDir fail!")
+		return err
+	}
+	for _, vFile := range folderList {
+		if vFile.IsDir() {
+			s_gitFolder := s_rootPath + s_PathSeparator + vFile.Name() + s_PathSeparator + ".git"
+			if Exist(s_gitFolder) {
+				ch <- s_rootPath + s_PathSeparator + vFile.Name()
+			} else {
+				dirsWalk(s_rootPath+s_PathSeparator+vFile.Name(), ch)
+			}
+		} else {
+			continue
+		}
+	}
+	return nil
+}
+
+func git_Update_byDir3(root string) {
+	g, ctx := errgroup.WithContext(context.TODO())
+	paths := make(chan string)
+
+	g.Go(func() error {
+		defer close(paths)
+		return dirsWalk(root, paths)
+	})
+
+	c := make(chan *result)
+	numDigesters := int(i_max_child_tasks)
+	for i := 0; i < numDigesters; i++ {
+		g.Go(func() error {
+			for po := range paths {
+				select {
+				case c <- &result{
+					path: po,
+					bo:   execCommand("git", []string{"pull"}, po),
+				}:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+			return nil
+		})
+	}
+	go func() {
+		g.Wait()
+		close(c)
+	}()
+
+	for r := range c {
+		r.print()
+	}
+	if err := g.Wait(); err != nil {
+		fmt.Println("g.Wait.error:", err)
+		return
+	}
+}
+
 func main() {
 	flag.Parse()
 	//cap: 1~30
@@ -197,7 +258,7 @@ func main() {
 		git_Update_byDir(s_home_rootpath, ch_max_exec)
 		wg.Wait()
 		*/
-		git_Update_byDir2(s_home_rootpath)
+		git_Update_byDir3(s_home_rootpath)
 	} else {
 		git_Update_byDir(s_home_rootpath, ch_max_exec)
 	}
