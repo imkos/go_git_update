@@ -35,7 +35,7 @@ func init() {
 		fmt.Println("git batch update(pull)! by K.o.s[vbz276@gmail.com]!")
 		flag.PrintDefaults()
 	}
-	flag.BoolVar(&b_mt, "mt", false, "enable Multithreading")
+	flag.BoolVar(&b_mt, "mt", true, "enable Multithreading")
 	flag.UintVar(&i_max_child_tasks, "ctasks", DEFAULT_MAX_CHILD_TASKS, "max Child tasks 1~20")
 	//home_rootpath := `F:\GoPortWin\go\src`
 	flag.StringVar(&s_home_rootpath, "dir", filepath.Dir(os.Args[0]), "Set Home RootPath")
