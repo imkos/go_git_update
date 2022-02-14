@@ -7,13 +7,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -27,6 +28,7 @@ var (
 	b_mt              bool
 	s_home_rootpath   string
 	i_max_child_tasks uint
+	needGitReset      bool
 )
 
 func init() {
@@ -37,11 +39,12 @@ func init() {
 	}
 	flag.BoolVar(&b_mt, "mt", true, "enable Multithreading")
 	flag.UintVar(&i_max_child_tasks, "ctasks", DEFAULT_MAX_CHILD_TASKS, "max Child tasks 1~20")
-	//home_rootpath := `F:\GoPortWin\go\src`
+	// home_rootpath := `F:\GoPortWin\go\src`
 	flag.StringVar(&s_home_rootpath, "dir", filepath.Dir(os.Args[0]), "Set Home RootPath")
+	flag.BoolVar(&needGitReset, "gr", false, "is need git reset")
 }
 
-//判断文件或文件夹是否存在
+// 判断文件或文件夹是否存在
 func Exist(filename string) bool {
 	_, err := os.Stat(filename)
 	return err == nil || os.IsExist(err)
@@ -55,8 +58,8 @@ func execCommand(commandName string, params []string, Dir_env string) bool {
 	}
 	cmd := exec.Command(commandName, params...)
 	cmd.Dir = Dir_env
-	//显示运行的命令
-	//fmt.Println(cmd.Args)
+	// 显示运行的命令
+	// fmt.Println(cmd.Args)
 	if !b_mt {
 		fmt.Println("Dir:", Dir_env)
 	}
@@ -68,7 +71,7 @@ func execCommand(commandName string, params []string, Dir_env string) bool {
 	cmd.Start()
 	reader := bufio.NewReader(stdout)
 	var out_buff bytes.Buffer
-	//实时循环读取输出流中的一行内容
+	// 实时循环读取输出流中的一行内容
 	for {
 		line, err2 := reader.ReadString('\n')
 		if err2 != nil || io.EOF == err2 {
@@ -83,6 +86,13 @@ func execCommand(commandName string, params []string, Dir_env string) bool {
 	cmd.Wait()
 	return true
 }
+
+const (
+	git_reset_pull = "git reset --hard && git pull"
+	git_pull       = "git pull"
+)
+
+var gitCmd string
 
 func git_Update_byDir(s_rootPath string, ch chan struct{}) {
 	folderList, err := ioutil.ReadDir(s_rootPath)
@@ -101,7 +111,7 @@ func git_Update_byDir(s_rootPath string, ch chan struct{}) {
 			if Exist(s_gitFolder) {
 				if b_mt {
 					wg.Add(1)
-					//在此处阻塞比在git_pull中阻塞要好一些
+					// 在此处阻塞比在git_pull中阻塞要好一些
 					ch <- struct{}{}
 					go git_pull(s_rootPath + s_PathSeparator + vFile.Name())
 				} else {
@@ -122,7 +132,7 @@ type result struct {
 }
 
 func (r *result) print() {
-	//fmt.Printf("path:%s, git update result: %v\n", r.path, r.bo)
+	// fmt.Printf("path:%s, git update result: %v\n", r.path, r.bo)
 }
 
 func git_Update_byDir2(root string) {
@@ -160,7 +170,7 @@ func git_Update_byDir2(root string) {
 				select {
 				case c <- &result{
 					path: po,
-					bo:   execCommand("git", []string{"pull"}, po),
+					bo:   execCommand("bash", []string{"-c", gitCmd}, po),
 				}:
 				case <-ctx.Done():
 					return ctx.Err()
@@ -221,7 +231,7 @@ func git_Update_byDir3(root string) {
 				select {
 				case c <- &result{
 					path: po,
-					bo:   execCommand("git", []string{"pull"}, po),
+					bo:   execCommand("bash", []string{"-c", gitCmd}, po),
 				}:
 				case <-ctx.Done():
 					return ctx.Err()
@@ -246,11 +256,16 @@ func git_Update_byDir3(root string) {
 
 func main() {
 	flag.Parse()
-	//cap: 1~30
+	// cap: 1~30
 	if i_max_child_tasks == 0 || i_max_child_tasks > DEFAULT_MAX_CHILD_TASKS {
 		i_max_child_tasks = DEFAULT_MAX_CHILD_TASKS
 	}
 	ch_max_exec := make(chan struct{}, i_max_child_tasks)
+	if needGitReset {
+		gitCmd = git_reset_pull
+	} else {
+		gitCmd = git_pull
+	}
 	//
 	if b_mt {
 		/* old方法
