@@ -29,6 +29,7 @@ var (
 	s_home_rootpath   string
 	i_max_child_tasks uint
 	needGitReset      bool
+	needGitPack       bool
 )
 
 func init() {
@@ -42,6 +43,7 @@ func init() {
 	// home_rootpath := `F:\GoPortWin\go\src`
 	flag.StringVar(&s_home_rootpath, "dir", filepath.Dir(os.Args[0]), "Set Home RootPath")
 	flag.BoolVar(&needGitReset, "gr", false, "is need git reset")
+	flag.BoolVar(&needGitPack, "gc", false, "is need git reset")
 }
 
 // 判断文件或文件夹是否存在
@@ -90,6 +92,7 @@ func execCommand(commandName string, params []string, Dir_env string) bool {
 const (
 	git_reset_pull = "git reset --hard && git pull"
 	git_pull       = "git pull"
+	git_gc         = "git gc"
 )
 
 var gitCmd string
@@ -263,6 +266,8 @@ func main() {
 	ch_max_exec := make(chan struct{}, i_max_child_tasks)
 	if needGitReset {
 		gitCmd = git_reset_pull
+	} else if needGitPack {
+		gitCmd = git_gc
 	} else {
 		gitCmd = git_pull
 	}
