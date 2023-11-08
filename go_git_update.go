@@ -43,7 +43,7 @@ func init() {
 	// home_rootpath := `F:\GoPortWin\go\src`
 	flag.StringVar(&s_home_rootpath, "dir", filepath.Dir(os.Args[0]), "Set Home RootPath")
 	flag.BoolVar(&needGitReset, "gr", false, "is need git reset")
-	flag.BoolVar(&needGitPack, "gc", false, "is need git reset")
+	flag.BoolVar(&needGitPack, "gc", false, "git garbage collection")
 }
 
 // 判断文件或文件夹是否存在
